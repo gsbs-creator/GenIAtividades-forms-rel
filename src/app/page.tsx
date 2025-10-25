@@ -67,61 +67,44 @@ export default function ProfessorPage() {
  return (
     <main className="container">
       <header className="header">
-        <Image 
-          src="/logo.png" 
-          alt="Logo GenIAtividades" 
-          width={200} 
-          height={100} 
-          priority
-        />
+        {/* ... seu header com a logo ... */}
       </header>
 
       <div className="card">
-        <h2>Área do Professor</h2>
-        <p>Crie uma nova atividade para seus alunos.</p>
-        <input
-          type="text"
-          value={assunto}
-          onChange={(e) => setAssunto(e.target.value)}
-          placeholder="Digite o assunto (ex: Fotossíntese)"
-          className="form-input"
-        />
-        <input
-          type="number"
-          value={numeroDeQuestoes}
-          onChange={(e) => setNumeroDeQuestoes(Number(e.target.value))}
-          className="form-input"
-          style={{ width: '100px', display: 'inline-block', marginRight: '1rem' }}
-        />
-        <button onClick={handleGerarFormulario} disabled={loading || !assunto} className="btn btn-primary">
-          {loading ? 'Gerando...' : 'Gerar Formulário'}
-        </button>
+        {/* ... seu formulário para criar a atividade ... */}
       </div>
 
-      {/* A seção inteira do link agora está dentro de um único 'card' */}
       {linkParaAluno && (
         <div className="card">
           <h2>Atividade Gerada com Sucesso!</h2>
           
-          {/* Link para o Aluno */}
           <p>Copie e envie o link abaixo para seus alunos responderem:</p>
-          <input 
-            type="text"
-            readOnly
-            value={linkParaAluno}
-            className="form-input"
-            style={{ backgroundColor: '#eee' }}
-          />
+          <input type="text" readOnly value={linkParaAluno} className="form-input"/>
           <button onClick={copiarLink} className="btn btn-success" style={{marginBottom: '2rem'}}>
             Copiar Link para Aluno
           </button>
 
           <hr style={{border: 'none', borderBottom: '1px solid #eee', margin: '1rem 0'}} />
 
-          {/* NOVO LINK PARA O PROFESSOR VER OS RESULTADOS */}
           <p>Use o link abaixo para acompanhar os resultados desta atividade:</p>
           <a href={`/resultados/${linkParaAluno.split('/').pop()}`} target="_blank" rel="noopener noreferrer">
              <button className="btn btn-primary">Ver Página de Resultados</button>
+          </a>
+
+          {/* ======================================= */}
+          {/* NOVO BOTÃO PARA ATRIBUIR À TURMA     */}
+          {/* ======================================= */}
+          <hr style={{border: 'none', borderBottom: '1px solid #eee', margin: '1rem 0'}} />
+          <p><strong>Passo final:</strong> Atribua esta atividade a uma de suas turmas cadastradas.</p>
+          <a href={
+              `http://geniatividades.infinityfree.me/professor/painel_professor.php?menu=atribuir` +
+              `&atividadeId=${linkParaAluno.split('/').pop()}` +
+              `&assunto=${encodeURIComponent(assunto)}` +
+              `&linkAluno=${encodeURIComponent(linkParaAluno)}` +
+              `&linkResultados=${encodeURIComponent(window.location.origin + '/resultados/' + linkParaAluno.split('/').pop())}`
+            }
+          >
+             <button className="btn btn-primary" style={{backgroundColor: '#28a745'}}>Atribuir a uma Turma</button>
           </a>
         </div>
       )}
