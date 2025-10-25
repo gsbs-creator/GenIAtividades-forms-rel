@@ -1,9 +1,8 @@
 'use client';
 import { useState } from 'react';
 import Image from 'next/image';
-import { supabase } from '@/lib/supabaseCliente'; // <-- LINHA CORRETA
+import { supabase } from '@/lib/supabaseCliente'; 
 
-// A interface não muda
 interface Questao {
   question: string;
   opcoes?: { [key: string]: string };
@@ -20,7 +19,6 @@ export default function ProfessorPage() {
     setLoading(true);
     setLinkParaAluno('');
     try {
-      // 1. Gera as questões usando nossa API interna (isso não muda)
       const response = await fetch('/api/gerar-formulario', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -30,25 +28,17 @@ export default function ProfessorPage() {
       
       const questoes: Questao[] = await response.json();
 
-      // --- A MÁGICA DO BANCO DE DADOS ACONTECE AQUI ---
-      // 2. Salva a atividade gerada no Supabase
       const { data, error } = await supabase
-        .from('atividades') // Escolhe a tabela 'atividades'
-        .insert([
-          { assunto: assunto, questoes: questoes } // Insere os dados
-        ])
-        .select() // Pede para o Supabase retornar o que foi inserido
+        .from('atividades')
+        .insert([{ assunto: assunto, questoes: questoes }])
+        .select()
 
       if (error) {
         throw new Error(`Erro ao salvar no Supabase: ${error.message}`);
       }
 
-      // 3. Pega o ID da atividade recém-criada
       const novaAtividadeId = data[0].id;
-      
-      // 4. Cria o link simples e limpo para o aluno
       const url = `${window.location.origin}/aluno/${novaAtividadeId}`;
-      
       setLinkParaAluno(url);
 
     } catch (error) {
@@ -64,16 +54,46 @@ export default function ProfessorPage() {
     alert('Link copiado para a área de transferência!');
   };
 
- return (
+  return (
     <main className="container">
       <header className="header">
-        {/* ... seu header com a logo ... */}
+        <Image 
+          src="/logo.png" 
+          alt="Logo GenIAtividades" 
+          width={200} 
+          height={100} 
+          priority
+        />
       </header>
 
+      {/* ======================================= */}
+      {/* SEÇÃO DO FORMULÁRIO (RESTAURADA)    */}
+      {/* ======================================= */}
       <div className="card">
-        {/* ... seu formulário para criar a atividade ... */}
+        <h2>Área do Professor</h2>
+        <p>Crie uma nova atividade para seus alunos.</p>
+        <input
+          type="text"
+          value={assunto}
+          onChange={(e) => setAssunto(e.target.value)}
+          placeholder="Digite o assunto (ex: Fotossíntese)"
+          className="form-input"
+        />
+        <input
+          type="number"
+          value={numeroDeQuestoes}
+          onChange={(e) => setNumeroDeQuestoes(Number(e.target.value))}
+          className="form-input"
+          style={{ width: '100px', display: 'inline-block', marginRight: '1rem' }}
+        />
+        <button onClick={handleGerarFormulario} disabled={loading || !assunto} className="btn btn-primary">
+          {loading ? 'Gerando...' : 'Gerar Formulário'}
+        </button>
       </div>
 
+      {/* ======================================= */}
+      {/* SEÇÃO DE RESULTADOS COM TODOS OS BOTÕES */}
+      {/* ======================================= */}
       {linkParaAluno && (
         <div className="card">
           <h2>Atividade Gerada com Sucesso!</h2>
@@ -91,10 +111,8 @@ export default function ProfessorPage() {
              <button className="btn btn-primary">Ver Página de Resultados</button>
           </a>
 
-          {/* ======================================= */}
-          {/* NOVO BOTÃO PARA ATRIBUIR À TURMA     */}
-          {/* ======================================= */}
           <hr style={{border: 'none', borderBottom: '1px solid #eee', margin: '1rem 0'}} />
+          
           <p><strong>Passo final:</strong> Atribua esta atividade a uma de suas turmas cadastradas.</p>
           <a href={
               `http://geniatividades.infinityfree.me/professor/painel_professor.php?menu=atribuir` +
@@ -109,4 +127,5 @@ export default function ProfessorPage() {
         </div>
       )}
     </main>
-  );}
+  );
+}
