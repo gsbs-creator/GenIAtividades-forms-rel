@@ -1,26 +1,25 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// Configuração correta, forçando a API v1
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY, { apiVersion: 'v1' });
 
 export async function POST(req) {
   try {
-    const { questoes, respostasDoAluno } = await req.json();
-
-    if (!questoes || !respostasDoAluno) {
+    const { questoes, respostasAluno } = await req.json();
+  
+    if (!questoes || !respostasAluno) {
       return NextResponse.json({ error: 'Dados das questões e respostas são obrigatórios.' }, { status: 400 });
     }
   
-    // CORREÇÃO: Usando o modelo que sabemos que é compatível com sua chave
+    // CORREÇÃO: Forçando o uso do modelo que sabemos que é compatível
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
   
     const prompt = `
       Você é um assistente pedagógico e sua tarefa é criar um relatório de desempenho de um aluno.
       
       DADOS DO TESTE:
-      - Perguntas, Opções e Respostas Corretas: ${JSON.stringify(questoes, null, 2)}
-      - Respostas que o Aluno marcou: ${JSON.stringify(respostasDoAluno, null, 2)}
+      - Perguntas e Respostas Corretas: ${JSON.stringify(questoes, null, 2)}
+      - Respostas que o Aluno marcou: ${JSON.stringify(respostasAluno, null, 2)}
       
       INSTRUÇÕES PARA O RELATÓRIO:
       1.  **Use formatação Markdown** para organizar o relatório.

@@ -1,78 +1,70 @@
 'use client';
 import { useState } from 'react';
 import Image from 'next/image';
-import ReactMarkdown from 'react-markdown'; // <-- Importamos a nova biblioteca
+import { supabase } from '@/lib/supabaseCliente'; // <-- LINHA CORRETA
 
-// Interface 100% alinhada com o novo prompt
+// A interface não muda
 interface Questao {
   question: string;
   opcoes?: { [key: string]: string };
   correct_answer: string;
 }
-interface Respostas {
-    [key: number]: string;
-}
 
-export default function HomePage() {
+export default function ProfessorPage() {
   const [assunto, setAssunto] = useState('');
   const [numeroDeQuestoes, setNumeroDeQuestoes] = useState(5);
   const [loading, setLoading] = useState(false);
-  const [questoes, setQuestoes] = useState<Questao[]>([]);
-  const [respostasAluno, setRespostasAluno] = useState<Respostas>({});
-  const [relatorio, setRelatorio] = useState('');
+  const [linkParaAluno, setLinkParaAluno] = useState('');
 
   const handleGerarFormulario = async () => {
     setLoading(true);
-    setQuestoes([]);
-    setRelatorio('');
+    setLinkParaAluno('');
     try {
+      // 1. Gera as questões usando nossa API interna (isso não muda)
       const response = await fetch('/api/gerar-formulario', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ assunto, numeroDeQuestoes }),
       });
       if (!response.ok) throw new Error('Falha ao buscar questões da API');
-      const data = await response.json();
-      setQuestoes(data);
+      
+      const questoes: Questao[] = await response.json();
+
+      // --- A MÁGICA DO BANCO DE DADOS ACONTECE AQUI ---
+      // 2. Salva a atividade gerada no Supabase
+      const { data, error } = await supabase
+        .from('atividades') // Escolhe a tabela 'atividades'
+        .insert([
+          { assunto: assunto, questoes: questoes } // Insere os dados
+        ])
+        .select() // Pede para o Supabase retornar o que foi inserido
+
+      if (error) {
+        throw new Error(`Erro ao salvar no Supabase: ${error.message}`);
+      }
+
+      // 3. Pega o ID da atividade recém-criada
+      const novaAtividadeId = data[0].id;
+      
+      // 4. Cria o link simples e limpo para o aluno
+      const url = `${window.location.origin}/aluno/${novaAtividadeId}`;
+      
+      setLinkParaAluno(url);
+
     } catch (error) {
       console.error(error);
-      alert('Ocorreu um erro ao gerar o formulário. Tente novamente.');
+      alert('Ocorreu um erro ao gerar e salvar a atividade. Tente novamente.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGerarRelatorio = async () => {
-    const questoesParaRelatorio = questoes.map(q => ({
-        pergunta: q.question,
-        opcoes: q.opcoes,
-        resposta_correta: q.correct_answer
-    }));
-
-    setLoading(true);
-    setRelatorio('');
-    try {
-        const response = await fetch('/api/gerar-relatorio', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ questoes: questoesParaRelatorio, respostasDoAluno: respostasAluno }),
-        });
-        if (!response.ok) throw new Error('Falha ao buscar relatório da API');
-        const data = await response.json();
-        setRelatorio(data.relatorio);
-    } catch (error) {
-        console.error(error);
-        alert('Ocorreu um erro ao gerar o relatório. Tente novamente.');
-    } finally {
-      setLoading(false);
-    }
+  const copiarLink = () => {
+    navigator.clipboard.writeText(linkParaAluno);
+    alert('Link copiado para a área de transferência!');
   };
 
-  const handleRespostaChange = (indiceQuestao: number, opcao: string) => {
-    setRespostasAluno({ ...respostasAluno, [indiceQuestao]: opcao });
-  };
-
-  return (
+ return (
     <main className="container">
       <header className="header">
         <Image 
@@ -84,9 +76,9 @@ export default function HomePage() {
         />
       </header>
 
-      {/* Card para o Professor */}
       <div className="card">
-        <h2>Para o Professor</h2>
+        <h2>Área do Professor</h2>
+        <p>Crie uma nova atividade para seus alunos.</p>
         <input
           type="text"
           value={assunto}
@@ -94,56 +86,44 @@ export default function HomePage() {
           placeholder="Digite o assunto (ex: Fotossíntese)"
           className="form-input"
         />
-        <div className="professor-controls">
-            <input
-              type="number"
-              value={numeroDeQuestoes}
-              onChange={(e) => setNumeroDeQuestoes(Number(e.target.value))}
-              className="form-input"
-              style={{ width: '100px', marginRight: '1rem' }}
-            />
-            <button onClick={handleGerarFormulario} disabled={loading || !assunto} className="btn btn-primary">
-              {loading ? 'Gerando...' : 'Gerar Formulário'}
-            </button>
-        </div>
+        <input
+          type="number"
+          value={numeroDeQuestoes}
+          onChange={(e) => setNumeroDeQuestoes(Number(e.target.value))}
+          className="form-input"
+          style={{ width: '100px', display: 'inline-block', marginRight: '1rem' }}
+        />
+        <button onClick={handleGerarFormulario} disabled={loading || !assunto} className="btn btn-primary">
+          {loading ? 'Gerando...' : 'Gerar Formulário'}
+        </button>
       </div>
 
-      {/* Card para o Aluno com ANIMAÇÃO */}
-      {questoes.length > 0 && (
-        <div className="card fade-in-start fade-in-end">
-          <h2>Formulário para o Aluno</h2>
-          {questoes.map((q, index) => (
-            <div key={index} style={{ marginBottom: '20px' }}>
-              <p><strong>{index + 1}. {q.question}</strong></p>
-              
-              {q.opcoes && Object.entries(q.opcoes).map(([letra, texto]) => (
-                <label key={letra} className="radio-option">
-                  <input
-                    type="radio"
-                    id={`q${index}_${letra}`}
-                    name={`questao_${index}`}
-                    value={letra}
-                    onChange={() => handleRespostaChange(index, letra)}
-                  />
-                  {letra}) {texto}
-                </label>
-              ))}
-            </div>
-          ))}
-          <button onClick={handleGerarRelatorio} disabled={loading} className="btn btn-success">
-            {loading ? 'Analisando...' : 'Finalizar e Gerar Relatório'}
+      {/* A seção inteira do link agora está dentro de um único 'card' */}
+      {linkParaAluno && (
+        <div className="card">
+          <h2>Atividade Gerada com Sucesso!</h2>
+          
+          {/* Link para o Aluno */}
+          <p>Copie e envie o link abaixo para seus alunos responderem:</p>
+          <input 
+            type="text"
+            readOnly
+            value={linkParaAluno}
+            className="form-input"
+            style={{ backgroundColor: '#eee' }}
+          />
+          <button onClick={copiarLink} className="btn btn-success" style={{marginBottom: '2rem'}}>
+            Copiar Link para Aluno
           </button>
-        </div>
-      )}
 
-      {/* Card para o Relatório com ANIMAÇÃO */}
-      {relatorio && (
-        <div className="card fade-in-start fade-in-end">
-            <ReactMarkdown>
-              {relatorio}
-            </ReactMarkdown>
+          <hr style={{border: 'none', borderBottom: '1px solid #eee', margin: '1rem 0'}} />
+
+          {/* NOVO LINK PARA O PROFESSOR VER OS RESULTADOS */}
+          <p>Use o link abaixo para acompanhar os resultados desta atividade:</p>
+          <a href={`/resultados/${linkParaAluno.split('/').pop()}`} target="_blank" rel="noopener noreferrer">
+             <button className="btn btn-primary">Ver Página de Resultados</button>
+          </a>
         </div>
       )}
     </main>
-  );
-}
+  );}
