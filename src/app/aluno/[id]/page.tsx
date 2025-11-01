@@ -1,21 +1,47 @@
+// src/app/aluno/[id]/page.tsx
+import { supabase } from '@/lib/supabaseCliente';
+import ClientPage from './client-page';
+import { notFound } from 'next/navigation';
 import type { Metadata, Viewport } from 'next';
-import ClientPage from './client-page'; // Verifique se o nome do arquivo importado está correto
 
-// Configuração correta para o Viewport (roda no servidor)
+// Viewport e Metadata (estão corretos)
 export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1.0,
+  width: 'device-width',
+  initialScale: 1.0,
 };
-
-// Metadados da página (roda no servidor)
 export const metadata: Metadata = {
-  title: "Responder Atividade - GenIAtividades",
-  description: "Página para responder a uma atividade gerada pela plataforma.",
+  title: "Responder Atividade - GenIAtividades",
+  description: "Página para responder a uma atividade gerada pela plataforma.",
 };
 
-// Esta é a página que o servidor vai montar
-// A função DEVE ser um componente React que retorna JSX
-export default function Page() {
-  // Ela simplesmente renderiza o nosso componente de cliente
-  return <ClientPage />;
+// FUNÇÃO PARA BUSCAR A ATIVIDADE (NO SERVIDOR)
+async function getAtividadeParaAluno(id: string) {
+  try {
+    const { data: atividade, error } = await supabase
+      .from('atividades')
+      .select('id, assunto, questoes') // Pega o assunto e as questões
+      .eq('id', id)
+      .single();
+    
+    if (error) throw error;
+    return atividade;
+
+  } catch (error) {
+    console.error("Erro ao buscar atividade para o aluno:", error);
+    return null;
+  }
+}
+
+// A PÁGINA PRECISA RECEBER 'params'
+export default async function Page({ params }: { params: { id: string } }) {
+  
+  // Busca a atividade específica usando o ID da URL
+  const atividade = await getAtividadeParaAluno(params.id);
+
+  if (!atividade) {
+    return notFound(); // Mostra 404 se a atividade não existir
+  }
+
+  // Renderiza o ClientPage E passa os dados da atividade para ele
+  return <ClientPage atividade={atividade} />;
 }
