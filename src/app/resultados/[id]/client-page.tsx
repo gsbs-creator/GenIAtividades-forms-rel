@@ -21,41 +21,53 @@ export default function ClientPage({ atividade, respostasIniciais }: Props) {
     setErroApi(null);
   };
 
-  const handleGerarRelatorio = async () => {
-    if (!respostaSelecionada || !atividade.questoes || !respostaSelecionada.respostas) {
-      setErroApi("Dados incompletos para gerar o relatório.");
-      return;
-    }
-    setLoading(true);
-    setErroApi(null);
+ const handleGerarRelatorio = async () => {
+    if (!respostaSelecionada || !atividade.questoes || !respostaSelecionada.respostas) {
+        setErroApi("Dados incompletos para gerar o relatório.");
+        return;
+    }
+    setLoading(true);
+    setErroApi(null);
+    console.log("--- INICIANDO GERAÇÃO DE RELATÓRIO ---");
+    console.log("DADOS DE ATIVIDADE (procure por 'questoes'):", atividade);
+    console.log("DADOS DO ALUNO (procure por 'respostas'):", respostaSelecionada);
+    console.log("---------------------------------------");
+    try {
+      const response = await fetch('/api/gerar-relatorio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questoes: atividade.questoes,
+          respostasDoAluno: respostaSelecionada.respostas,
+          resposta_id: respostaSelecionada.id,
+          nome_aluno: respostaSelecionada.nome_aluno
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Falha ao buscar relatório da API');
+      }
+      const respostaAtualizada = {
+        ...respostaSelecionada,
+        relatorio_gerado: data.relatorio,
+      };
+      setRespostas(respostas.map(r => 
+        r.id === respostaSelecionada.id ? respostaAtualizada : r
+      ));
+      setRespostaSelecionada(respostaAtualizada);
 
-    try {
-      const response = await fetch('/api/gerar-relatorio', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          questoes: atividade.questoes,
-          respostasDoAluno: respostaSelecionada.respostas,
-          resposta_id: respostaSelecionada.id,
-          nome_aluno: respostaSelecionada.nome_aluno
-        }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Falha ao buscar relatório da API');
-
-      const respostaAtualizada = {
-        ...respostaSelecionada,
-        relatorio_gerado: data.relatorio,
-      };
-      setRespostas(respostas.map(r => r.id === respostaSelecionada.id ? respostaAtualizada : r));
-      setRespostaSelecionada(respostaAtualizada);
-    } catch (error: any) {
-      setErroApi(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+    // --- CORREÇÃO DO CATCH ---
+    } catch (error: unknown) { // <-- MUDANÇA DE 'any' PARA 'unknown'
+      console.error("Erro em handleGerarRelatorio:", error);
+      if (error instanceof Error) {
+        setErroApi(error.message); // <-- Agora é seguro
+      } else {
+        setErroApi("Ocorreu um erro desconhecido.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <>
